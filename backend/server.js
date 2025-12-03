@@ -9,6 +9,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("Backend is running. Try /api/health or /api/items.");
+});
+
 // Simple health endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
