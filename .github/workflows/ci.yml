@@ -1,4 +1,4 @@
-name: CI
+name: CI & Deploy
 
 on:
   push:
@@ -6,8 +6,17 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
+  ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,9 +30,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: |
             backend/package-lock.json
-            frontent/package-lock.json
+            frontend/package-lock.json
 
-      # Backend
+      # Backend CI
       - name: Install backend deps
         working-directory: backend
         run: npm install
@@ -32,11 +41,47 @@ jobs:
         working-directory: backend
         run: npm test
 
-      # Frontend
+      # Frontend CI
       - name: Install frontend deps
-        working-directory: frontent
+        working-directory: frontend
         run: npm install
 
       - name: Build frontend
-        working-directory: frontent
+        working-directory: frontend
         run: npm run build
+
+  deploy-pages:
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm install
+
+      - name: Build frontend (production)
+        working-directory: frontend
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
+        run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
