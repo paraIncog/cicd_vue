@@ -3,15 +3,13 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
-// Change 'frontent' here to your actual repo name if different
-const repoName = 'frontent'
+const repoName = 'cicd-vue'
 
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? `/${repoName}/` : '/',
   plugins: [
     vue(),
-    // Devtools only in dev
-    command === 'serve' && vueDevTools(),
+    command === 'serve' && vueDevTools(), // devtools only in dev
   ].filter(Boolean),
   resolve: {
     alias: {
