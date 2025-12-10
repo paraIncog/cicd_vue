@@ -11,6 +11,7 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Backend is running. Try /api/health or /api/items.");
+  res.send("Good day!");
 });
 
 // Simple health endpoint

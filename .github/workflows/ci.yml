@@ -49,6 +49,48 @@ jobs:
       - name: Build frontent
         working-directory: frontent
         run: npm run build
+  
+  
+  deploy-backend:
+    name: Deploy backend to DigitalOcean
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout repo (for completeness; not strictly needed for remote SSH)
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.4
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          port: ${{ secrets.DO_PORT }}
+          command_timeout: 30m
+          script: |
+            # go to your app directory
+            cd ${{ secrets.DO_BACKEND_DIR }}
+
+            # make sure git knows about origin (only needed once; after that it's a no-op)
+            if ! git remote | grep -q origin; then
+              git init
+              git remote add origin https://github.com/${{ github.repository }}.git
+              git fetch origin
+              git checkout -B main origin/main
+            else
+              git fetch origin
+              git reset --hard origin/main
+            fi
+
+            # install / update dependencies
+            npm install --production
+
+            # restart PM2 process (start it if not already running)
+            pm2 restart backend || pm2 start server.js --name backend
+
+            # save PM2 config (so it comes back after reboot)
+            pm2 save
 
   deploy-pages:
     needs: ci
