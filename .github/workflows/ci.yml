@@ -54,8 +54,7 @@ jobs:
   deploy-backend:
     name: Deploy backend to DigitalOcean
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
+    
     steps:
       - name: Checkout repo (for completeness; not strictly needed for remote SSH)
         uses: actions/checkout@v4
@@ -64,15 +63,22 @@ jobs:
         uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USER }}
+          username: ${{ secrets.DO_USER }}      # e.g. root
           key: ${{ secrets.DO_SSH_KEY }}
           port: 22
           command_timeout: 30m
           script: |
+            # load nvm + node + npm + pm2 for this non-interactive shell
+            export NVM_DIR="$HOME/.nvm"
+            if [ -s "$NVM_DIR/nvm.sh" ]; then
+              . "$NVM_DIR/nvm.sh"
+              nvm use --lts
+            fi
+
             # go to your app directory
             cd ${{ secrets.DO_BACKEND_DIR }}
 
-            # make sure git knows about origin (only needed once; after that it's a no-op)
+            # update repo
             if ! git remote | grep -q origin; then
               git init
               git remote add origin https://github.com/${{ github.repository }}.git
@@ -83,14 +89,15 @@ jobs:
               git reset --hard origin/main
             fi
 
-            # install / update dependencies
-            npm install --production
+            # install / update deps
+            npm ci --omit=dev || npm install --production
 
-            # restart PM2 process (start it if not already running)
-            pm2 restart backend || pm2 start server.js --name backend
+            # restart pm2 app (or start if first time)
+            pm2 restart backend || pm2 start server.js --name backend --update-env
 
-            # save PM2 config (so it comes back after reboot)
+            # persist pm2 config
             pm2 save
+
 
   deploy-pages:
     needs: ci
