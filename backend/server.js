@@ -10,8 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Backend is running. Try /api/health or /api/items.");
-  res.send("Good day!");
+  res.send("Backend is running. Try /api/health or /api/items.\nGood Day");
 });
 
 // Simple health endpoint
